@@ -318,13 +318,13 @@
   (match (map-get? templates { template-id: template-id })
     template_info
       (let (
-        (current-version (get latest-version template-info))
+        (current-version (get latest-version template_info))
         (new-version (+ current-version u1))
         (current-time (get-current-time))
       )
         ;; Check authorization
         (asserts! (or
-          (is-eq (get author template-info) tx-sender)
+          (is-eq (get author template_info) tx-sender)
           (is-contract-owner)
         ) ERR-NOT-AUTHORIZED)
         
@@ -342,10 +342,42 @@
         ;; Update latest version reference
         (map-set templates
           { template-id: template-id }
-          (merge template-info { latest-version: new-version })
+          (merge template_info { latest-version: new-version })
         )
         
         (ok new-version)
+      )
+    ERR-TEMPLATE-NOT-FOUND
+  )
+)
+
+;; Grant specific permission to user for template
+(define-public (grant-template-permission 
+  (template-id (string-utf8 36)) 
+  (user principal) 
+  (can-use bool) 
+  (can-edit bool)
+  (duration uint)
+)
+  (match (map-get? templates { template-id: template-id })
+    template_info
+      (begin
+        ;; Check authorization
+        (asserts! (or
+          (is-eq (get author template_info) tx-sender)
+          (is-contract-owner)
+        ) ERR-NOT-AUTHORIZED)
+        
+        ;; Set permission
+        (map-set template-permissions
+          { template-id: template-id, user: user }
+          {
+            can-use: can-use,
+            can-edit: can-edit,
+            expires-at: (+ (get-current-time) duration)
+          }
+        )
+        (ok true)
       )
     ERR-TEMPLATE-NOT-FOUND
   )
@@ -449,38 +481,6 @@
     (var-set platform-revenue (+ (var-get platform-revenue) price))
     
     (ok expiry)
-  )
-)
-
-;; Grant specific permission to user for template
-(define-public (grant-template-permission 
-  (template-id (string-utf8 36)) 
-  (user principal) 
-  (can-use bool) 
-  (can-edit bool)
-  (duration uint)
-)
-  (match (map-get? templates { template-id: template-id })
-    template_info
-      (begin
-        ;; Check authorization
-        (asserts! (or
-          (is-eq (get author template_info) tx-sender)
-          (is-contract-owner)
-        ) ERR-NOT-AUTHORIZED)
-        
-        ;; Set permission
-        (map-set template-permissions
-          { template-id: template-id, user: user }
-          {
-            can-use: can-use,
-            can-edit: can-edit,
-            expires-at: (+ (get-current-time) duration)
-          }
-        )
-        (ok true)
-      )
-    ERR-TEMPLATE-NOT-FOUND
   )
 )
 
